@@ -47,7 +47,7 @@ No background HTTP server, history database or transcript logging. Catalogue bro
 
 The worker prefers `~/.config/omarchy/jev/api-key`, falling back to `TYPESAFE_API_KEY` only if no saved key exists. The saved key is a user-owned regular file (600) inside a private directory (700). Symlinks, hardlinks, devices, FIFOs, oversized keys and control characters are rejected. HTTP redirects are refused, including redirects to the same host. Credentials never enter QML, command arguments, exception output or repository files. Local commands do not inherit `TYPESAFE_API_KEY`.
 
-Click **Configure key** to open a hidden terminal prompt. Setup makes a small live connection test before atomically replacing the saved key, so a failed connection keeps the previous key. Setup can repair permissions on owned regular credential files. No credential backups are created. Changing the environment does not override a saved key; rerun setup to rotate it.
+Click **Configure key** (or Ctrl+K) to open a hidden terminal prompt. Setup makes a small live connection test before atomically replacing the saved key, so a failed connection keeps the previous key. Setup can repair permissions on owned regular credential files. No credential backups are created. Changing the environment does not override a saved key; rerun setup to rotate it.
 
 The plugin shares your desktop user privileges with other Omarchy plugins. This is not protection against malicious code already running as your user. Read [SECURITY.md](SECURITY.md) for the review scope and limits.
 

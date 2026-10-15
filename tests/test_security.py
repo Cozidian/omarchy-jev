@@ -138,3 +138,12 @@ class TransportTests(unittest.TestCase):
             opener.return_value.open.return_value = response
             with self.assertRaises(credentials.SetupError): transport.ask({}, 'synthetic-token')
         response.__enter__.return_value.read.assert_called_once_with(transport.MAX_RESPONSE+1)
+
+class SetupLaunchTests(unittest.TestCase):
+    def test_terminal_is_detached_and_does_not_inherit_key(self):
+        with patch.object(sys, 'argv', ['setup.py','--launch']), patch.dict(os.environ, {'TYPESAFE_API_KEY':'synthetic-private-token'}), patch.object(setup.subprocess, 'Popen') as launch:
+            self.assertEqual(setup.main(), 0)
+        self.assertEqual(launch.call_args.args[0][:4], ['omarchy','launch','terminal','python3'])
+        self.assertTrue(launch.call_args.kwargs['start_new_session'])
+        self.assertNotIn('TYPESAFE_API_KEY',launch.call_args.kwargs['env'])
+        self.assertEqual(launch.call_args.kwargs['stdout'], setup.subprocess.DEVNULL)

@@ -85,6 +85,9 @@ Item {
                 : "Press Enter for guidance. This command cannot run automatically.")
         Qt.callLater(function() { input.forceActiveFocus(); input.cursorPosition = input.text.length })
     }
+    function configureKey() {
+        if (!worker.running && !configuration.running) configuration.running = true
+    }
     function submit() {
         if (worker.running || !input.text.trim()) return
         if (root.browsing) {
@@ -133,7 +136,15 @@ Item {
     }
     Process {
         id: configuration
-        command: ["omarchy", "launch", "terminal", "python3", root.pluginDir + "/setup.py"]
+        command: ["python3", root.pluginDir + "/setup.py", "--launch"]
+        onExited: function(exitCode, exitStatus) {
+            if (exitCode === 0) root.dismiss()
+            else {
+                root.heading = "Could not open setup"
+                root.detail = "Run python3 " + root.pluginDir + "/setup.py in a terminal."
+                root.outcome = "error"
+            }
+        }
     }
     Process {
         id: worker
@@ -228,6 +239,8 @@ Item {
                     Keys.onPressed: function(event) {
                         if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_B) {
                             root.toggleBrowse(); event.accepted = true
+                        } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_K) {
+                            root.configureKey(); event.accepted = true
                         } else if (root.browsing && (event.key === Qt.Key_Down || event.key === Qt.Key_Up)) {
                             var step = event.key === Qt.Key_Down ? 1 : -1
                             commandList.currentIndex = Math.max(0, Math.min(root.filtered.length - 1, commandList.currentIndex + step))
@@ -348,7 +361,7 @@ Item {
                     Button {
                         text: "Configure key"
                         enabled: !worker.running && !configuration.running
-                        onClicked: { configuration.running = true; root.dismiss() }
+                        onClicked: root.configureKey()
                     }
                     CheckBox {
                         id: previewBox

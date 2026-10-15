@@ -4,6 +4,9 @@ import sys
 sys.dont_write_bytecode = True
 import argparse
 import getpass
+import os
+from pathlib import Path
+import subprocess
 import credentials
 import transport
 
@@ -20,7 +23,13 @@ def main():
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--from-env', action='store_true', help='Validate and save TYPESAFE_API_KEY; never pass a key as an argument')
     group.add_argument('--check', action='store_true', help='Make a small live API request with the configured key')
+    group.add_argument('--launch', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.launch:
+        subprocess.Popen(['omarchy','launch','terminal','python3',str(Path(__file__).resolve())],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True, env={k:v for k,v in os.environ.items() if k != 'TYPESAFE_API_KEY'})
+        return 0
     interactive = not args.from_env and not args.check
     try:
         if args.check:
