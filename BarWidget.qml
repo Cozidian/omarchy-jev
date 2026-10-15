@@ -11,8 +11,8 @@ Ui.BarWidget {
         id: button
         anchors.fill: parent
         bar: root.bar
-        text: "JEV"
-        tooltipText: "Ask JEV · Super+Alt+J"
+        text: "Nudge"
+        tooltipText: "Nudge · Powered by JEV"
         onPressed: function(buttonCode) {
             if (buttonCode === Qt.LeftButton && root.bar && root.bar.shell)
                 root.bar.shell.toggle(root.moduleName, "{}")

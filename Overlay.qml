@@ -117,7 +117,7 @@ Item {
                     root.filterCatalogue()
                 } catch (e) {
                     root.heading = "Command catalogue unavailable"
-                    root.detail = "Check that “omarchy commands --all --json” works, then reopen JEV."
+                    root.detail = "Check that “omarchy commands --all --json” works, then reopen Nudge."
                 }
             }
         }
@@ -208,7 +208,11 @@ Item {
                 spacing: 16
                 Row {
                     spacing: 12
-                    Text { text: "JEV"; color: Commons.Color.menu.text; font.pixelSize: 16; font.bold: true }
+                    Column {
+                        spacing: 3
+                        Text { text: "Nudge"; color: Commons.Color.menu.text; font.pixelSize: 16; font.bold: true }
+                        Text { text: "Powered by JEV"; color: Commons.Color.menu.text; opacity: .6; font.pixelSize: 11 }
+                    }
                     Text {
                         text: root.omarchyCount ? root.omarchyCount + " commands · " + root.shortcutCount + " shortcuts" : "Discovering Omarchy actions…"
                         color: Commons.Color.menu.text; opacity: .6; font.pixelSize: 13
@@ -354,7 +358,7 @@ Item {
                     width: parent.width
                     spacing: 16
                     Button {
-                        text: root.browsing ? "Ask JEV" : "Browse actions"
+                        text: root.browsing ? "Ask Nudge" : "Browse actions"
                         enabled: !worker.running
                         onClicked: root.toggleBrowse()
                     }

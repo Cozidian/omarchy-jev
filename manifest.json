@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "io.github.cozidian.jev",
-  "name": "JEV Launcher",
-  "version": "1.3.0",
+  "name": "Nudge",
+  "version": "1.3.1",
   "author": "cozidian",
   "license": "MIT",
-  "description": "Discover all Omarchy commands, route natural language with JEV, and execute only validated safe operations.",
+  "description": "A natural-language action bar powered by JEV. Discover Omarchy actions and shortcuts; run only reviewed, validated operations.",
   "kinds": [
     "overlay",
     "bar-widget"
@@ -15,8 +15,8 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "JEV",
-    "description": "Ask JEV to help with your desktop",
+    "displayName": "Nudge",
+    "description": "Describe what you need \u00b7 Powered by JEV",
     "category": "Utility",
     "allowMultiple": false,
     "defaultSection": "left"

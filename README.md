@@ -1,6 +1,8 @@
-# JEV Launcher for Omarchy
+# Nudge for Omarchy
 
-Click **JEV** in the bar, or press **Super+Alt+J** if you added the optional shortcut. Describe what you need and press Enter. Clear matches with a reviewed safe operation run automatically. **Preview only** shows the planned operation without running it. Escape or clicking outside closes the overlay.
+**Describe what you need. Nudge helps your desktop respond. Powered by JEV.**
+
+Click **Nudge** in the bar, or press **Super+Alt+J** if you added the optional shortcut. Describe what you need and press Enter. Clear matches with a reviewed safe operation run automatically. **Preview only** shows the planned operation without running it. Escape or clicking outside closes the overlay.
 
 **Browse actions** / **Ctrl+B** opens the live command catalogue. Type to filter command names, groups, descriptions and aliases. Up/Down selects a row; Enter or clicking inspects it. Inspection fills the command into the request field but does not run it. Add any needed operation/value and press Enter to ask JEV.
 
@@ -51,6 +53,8 @@ Click **Configure key** (or Ctrl+K) to open a hidden terminal prompt. Setup make
 
 The plugin shares your desktop user privileges with other Omarchy plugins. This is not protection against malicious code already running as your user. Read [SECURITY.md](SECURITY.md) for the review scope and limits.
 
+The plugin ID, repository URL and credential path retain their original `jev` names so existing installations keep working.
+
 ## Install and develop
 
 Use `~/.agents/skills/typesafe-ai/SKILL.md` for JEV work and the Omarchy skill for desktop changes. TypeSafe API documentation: https://docs.typesafe.ai/api. Function-calling and hierarchy patterns: https://docs.typesafe.ai/cookbooks/function_calling and https://docs.typesafe.ai/cookbooks/hierarchical_classification.
@@ -68,15 +72,15 @@ Setup prompts for your key without echoing it. Never paste a key into a shell co
 
 For a local checkout, run `python3 install.py`, validate with `omarchy plugin validate ~/.config/omarchy/plugins/io.github.cozidian.jev`, then enable with `omarchy plugin enable io.github.cozidian.jev`. The copy installer leaves credentials and keyboard bindings unchanged. Back up your existing plugin before replacing customized code.
 
-Add JEV to the bar using the Omarchy bar editor, or optionally add this line to `~/.config/hypr/bindings.lua` after backing up the file and checking `hyprctl -j binds` for conflicts:
+Add Nudge to the bar using the Omarchy bar editor, or optionally add this line to `~/.config/hypr/bindings.lua` after backing up the file and checking `hyprctl -j binds` for conflicts:
 
 ```lua
-o.bind("SUPER + ALT + J", "JEV Launcher", "omarchy-shell shell toggle io.github.cozidian.jev")
+o.bind("SUPER + ALT + J", "Nudge", "omarchy-shell shell toggle io.github.cozidian.jev")
 ```
 
 Then run `hyprctl reload` and `hyprctl configerrors`. The shortcut is optional; the stock plugin installer does not create it. Plugin changes normally reload automatically; `omarchy restart shell` reloads QML if needed.
 
-Disable with `omarchy plugin disable io.github.cozidian.jev`; remove the marked JEV binding from `~/.config/hypr/bindings.lua`, reload, and check configerrors.
+Disable with `omarchy plugin disable io.github.cozidian.jev`, or uninstall with `omarchy plugin remove io.github.cozidian.jev`; remove the Nudge binding (or the earlier JEV binding) from `~/.config/hypr/bindings.lua`, reload, and check configerrors.
 
 ## Verification
 
