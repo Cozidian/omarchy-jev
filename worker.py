@@ -3,17 +3,16 @@
 import argparse
 import json
 import os
-from pathlib import Path
-import stat
 import subprocess
 import sys
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 # Helpers live in a hot-reloaded plugin directory: bytecode writes would
 # trigger a plugin reload while its discovery request is still opening the UI.
 sys.dont_write_bytecode = True
 import catalogue
 import routing
+import credentials
+import transport
 
 EXAMPLES = ['My eyes feel tired', 'Set brightness to 45%', 'It is too loud',
             'Remind me to stretch in twenty minutes', 'Show my reminders',
@@ -24,7 +23,8 @@ EXAMPLES = ['My eyes feel tired', 'Set brightness to 45%', 'It is too loud',
 def run(argv, capture=True):
     # A long-lived app must not inherit output pipes that keep communicate() open.
     result = subprocess.run(argv, check=True, stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL, text=True, timeout=15)
+                            stderr=subprocess.DEVNULL, text=True, timeout=15,
+                            env={k:v for k,v in os.environ.items() if k != 'TYPESAFE_API_KEY'})
     return (result.stdout or '').strip()
 
 
@@ -48,25 +48,11 @@ def execute(operation):
 
 
 def api_key():
-    key = os.environ.get('TYPESAFE_API_KEY', '').strip()
-    if key: return key
-    path = Path.home() / '.config/omarchy/jev/api-key'
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-    with os.fdopen(fd) as stream:
-        info = os.fstat(stream.fileno())
-        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
-            raise ValueError('API key file must be a private regular file (chmod 600).')
-        return stream.read(4096).strip()
+    return credentials.load()
 
 
 def ask(payload):
-    try: key = api_key()
-    except FileNotFoundError: key = ''
-    if not key: raise ValueError('Set TYPESAFE_API_KEY or save it in ~/.config/omarchy/jev/api-key (mode 600).')
-    request = Request('https://api.typesafe.ai/v1/systemone', data=json.dumps(payload).encode(),
-                      headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'})
-    with urlopen(request, timeout=20) as response:
-        return json.loads(response.read(1024000))
+    return transport.ask(payload, api_key())
 
 
 def load_catalogue():
@@ -98,6 +84,7 @@ def main():
     parser.add_argument('--catalogue', action='store_true', help='Discover current Omarchy commands; no JEV request or execution')
     parser.add_argument('--examples', action='store_true')
     args = parser.parse_args()
+    request_id = None
     try:
         if args.catalogue:
             rows, warnings = load_catalogue()
@@ -108,18 +95,26 @@ def main():
         else:
             incoming = sys.stdin.buffer.read(8193)
             if len(incoming) > 8192: raise ValueError('Request too large.')
-            text = json.loads(incoming)['text']
+            message = json.loads(incoming)
+            request_id = message.get('requestId')
+            if request_id is not None and (type(request_id) is not int or not 0 <= request_id <= 2147483647):
+                raise ValueError('Invalid request ID.')
+            text = message['text']
             result = perform(text, args.preview)
     except HTTPError as error:
+        error.close()
         result = {'status':'error','title':'Nothing changed','detail':f'JEV returned HTTP {error.code}. Check your key, quota or connection and try again.'}
     except (URLError,TimeoutError):
         result = {'status':'error','title':'Nothing changed','detail':'Could not reach JEV. Check the connection and try again.'}
     except (subprocess.SubprocessError,OSError):
         result = {'status':'error','title':'Action could not be completed','detail':'A local command failed or timed out. Check the catalogue, device or application before trying again.'}
-    except (ValueError,KeyError,TypeError) as error:
-        result = {'status':'error','title':'Nothing changed','detail':str(error) if isinstance(error,ValueError) else 'Invalid request or JEV response.'}
+    except credentials.SetupError as error:
+        result = {'status':'error','title':'Configure API key','detail':str(error)}
+    except (ValueError,KeyError,TypeError):
+        result = {'status':'error','title':'Could not complete the request','detail':'Invalid request, local status or JEV response. Check the desktop state before retrying.'}
     except Exception:
         result = {'status':'error','title':'Action could not be completed','detail':'Check the desktop state before trying again.'}
+    if request_id is not None: result['requestId'] = request_id
     print(json.dumps(result, ensure_ascii=False))
 
 

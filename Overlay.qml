@@ -14,6 +14,7 @@ Item {
     property bool preview: false
     property bool browsing: false
     property string pending: ""
+    property int generation: 0
     property string heading: "What would you like to do?"
     property string detail: "Ask naturally, or browse the available actions."
     property string outcome: ""
@@ -37,6 +38,8 @@ Item {
     }
     function close() {
         root.opened = false
+        root.generation += 1
+        deadline.stop()
         worker.running = false
         discovery.running = false
     }
@@ -88,12 +91,13 @@ Item {
             if (commandList.currentIndex >= 0) root.inspect(root.filtered[commandList.currentIndex])
             return
         }
-        root.pending = JSON.stringify({text: input.text.trim()})
+        root.pending = JSON.stringify({text: input.text.trim(), requestId: ++root.generation})
         root.heading = root.preview ? "Finding an action…" : "Asking JEV…"
         root.detail = ""
         root.outcome = ""
         worker.command = ["python3", root.pluginDir + "/worker.py"].concat(root.preview ? ["--preview"] : [])
         worker.running = true
+        deadline.restart()
     }
     Process {
         id: discovery
@@ -116,12 +120,28 @@ Item {
         }
         stderr: StdioCollector {}
     }
+    Timer {
+        id: deadline
+        interval: 60000
+        onTriggered: {
+            root.generation += 1
+            worker.running = false
+            root.heading = "Request timed out"
+            root.detail = "Check the desktop state before retrying; an action may have started."
+            root.outcome = "error"
+        }
+    }
+    Process {
+        id: configuration
+        command: ["omarchy", "launch", "terminal", "python3", root.pluginDir + "/setup.py"]
+    }
     Process {
         id: worker
         stdinEnabled: true
         onStarted: { write(root.pending); stdinEnabled = false }
         onExited: function(exitCode, exitStatus) {
             stdinEnabled = true
+            deadline.stop()
             if (root.opened && exitCode !== 0) {
                 root.heading = "Could not complete the request"
                 root.detail = "Check your connection and try again."
@@ -134,6 +154,7 @@ Item {
                 if (!root.opened) return
                 try {
                     var result = JSON.parse(text)
+                    if (result.requestId !== root.generation) return
                     root.heading = result.title
                     root.detail = result.detail
                     root.outcome = result.status
@@ -323,6 +344,11 @@ Item {
                         text: root.browsing ? "Ask JEV" : "Browse actions"
                         enabled: !worker.running
                         onClicked: root.toggleBrowse()
+                    }
+                    Button {
+                        text: "Configure key"
+                        enabled: !worker.running && !configuration.running
+                        onClicked: { configuration.running = true; root.dismiss() }
                     }
                     CheckBox {
                         id: previewBox

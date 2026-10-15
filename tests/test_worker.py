@@ -53,3 +53,20 @@ class ExecutorTests(unittest.TestCase):
 
 
 if __name__ == '__main__': unittest.main()
+
+class BoundaryTests(unittest.TestCase):
+    def test_child_commands_do_not_inherit_api_key(self):
+        import os
+        with patch.dict(os.environ, {'TYPESAFE_API_KEY':'synthetic-secret-token'}), patch.object(worker.subprocess, 'run') as command:
+            command.return_value.stdout = ''
+            worker.run(['omarchy','version'])
+        self.assertNotIn('TYPESAFE_API_KEY', command.call_args.kwargs['env'])
+
+    def test_request_identifier_returned_without_changing_routing(self):
+        import io
+        import json
+        output = io.StringIO()
+        incoming = type('Input', (), {'buffer':io.BytesIO(b'{"text":"help","requestId":42}')})()
+        with patch.object(sys, 'argv',['worker.py']), patch.object(sys,'stdin',incoming), patch('sys.stdout',output), patch.object(worker,'perform',return_value={'status':'help'}):
+            worker.main()
+        self.assertEqual(json.loads(output.getvalue()), {'status':'help','requestId':42})

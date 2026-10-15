@@ -1,41 +1,51 @@
 #!/usr/bin/env python3
-"""Install user-owned files; never modifies packaged Omarchy files."""
-from datetime import datetime
+"""Copy a local checkout into the user plugin directory. No credentials or config edits."""
+import sys
+sys.dont_write_bytecode = True
 import os
 from pathlib import Path
-import shutil
 import stat
 
-root = Path(__file__).resolve().parent
-home = Path.home()
-plugin = home / '.config/omarchy/plugins/io.github.cozidian.jev'
-stamp = datetime.now().strftime('%Y%m%d%H%M%S')
-plugin.mkdir(parents=True, exist_ok=True)
-for name in ('manifest.json', 'Overlay.qml', 'BarWidget.qml', 'worker.py', 'catalogue.py', 'routing.py', 'README.md'):
-    dest = plugin / name
-    if dest.is_symlink(): raise SystemExit(f'Refusing symlink: {dest}')
-    if dest.exists() and dest.read_bytes() == (root / name).read_bytes(): continue
-    if dest.exists(): shutil.copy2(dest, dest.with_name(name + '.bak.' + stamp))
-    shutil.copy2(root / name, dest)
-key = os.environ.get('TYPESAFE_API_KEY', '').strip()
-if key:
-    folder = home / '.config/omarchy/jev'
-    folder.mkdir(mode=0o700, parents=True, exist_ok=True)
-    path = folder / 'api-key'
-    if not path.exists() and not path.is_symlink():
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-        with os.fdopen(fd, 'w') as stream: stream.write(key + '\n')
-        print('Configured private API key file; key not displayed.')
-    else:
-        print('Existing API key file preserved.')
-bindings = home / '.config/hypr/bindings.lua'
-line = 'o.bind("SUPER + ALT + J", "JEV Launcher", "omarchy-shell shell toggle io.github.cozidian.jev")'
-text = bindings.read_text()
-if line not in text:
-    if 'SUPER + ALT + J' in text:
-        raise SystemExit('Shortcut already appears in user bindings; plugin installed, binding left unchanged.')
-    shutil.copy2(bindings, bindings.with_name('bindings.lua.bak.jev.' + stamp))
-    bindings.write_text(text.rstrip() + '\n\n-- Natural language desktop launcher\n' + line + '\n')
-print('Installed:', plugin)
-print('Shortcut: Super+Alt+J')
-print('Next: omarchy-shell shell rescanPlugins; omarchy plugin enable io.github.cozidian.jev')
+FILES = ('manifest.json', 'Overlay.qml', 'BarWidget.qml', 'worker.py', 'catalogue.py',
+         'routing.py', 'credentials.py', 'transport.py', 'setup.py', 'README.md', 'LICENSE', 'SECURITY.md')
+
+
+def install():
+    root = Path(__file__).resolve().parent
+    plugin = Path.home() / '.config/omarchy/plugins/io.github.cozidian.jev'
+    fd = os.open(Path.home(), os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        for part in ('.config','omarchy','plugins','io.github.cozidian.jev'):
+            try: os.mkdir(part, mode=0o700, dir_fd=fd)
+            except FileExistsError: pass
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = child
+            if os.fstat(fd).st_uid != os.getuid(): raise ValueError('Destination must be user-owned.')
+        # Preflight every target before changing anything. Refuse links/devices/FIFOs.
+        for name in FILES:
+            try: info = os.stat(name, dir_fd=fd, follow_symlinks=False)
+            except FileNotFoundError: continue
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_nlink != 1:
+                raise ValueError('Unsafe plugin destination.')
+        for name in FILES:
+            if root == plugin.resolve(): continue  # Stock plugin add clones here directly.
+            data = (root / name).read_bytes()
+            temporary = '.' + name + '.install-' + str(os.getpid())
+            target = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=fd)
+            try:
+                with os.fdopen(target, 'wb') as stream: stream.write(data)
+                os.replace(temporary, name, src_dir_fd=fd, dst_dir_fd=fd)
+            finally:
+                try: os.unlink(temporary, dir_fd=fd)
+                except FileNotFoundError: pass
+    finally: os.close(fd)
+    print('Installed:', plugin)
+    print('Next: python3 ' + str(plugin / 'setup.py'))
+    print('Then: omarchy plugin validate ' + str(plugin))
+    print('Enable: omarchy plugin enable io.github.cozidian.jev')
+    print('Existing shortcuts and credentials are unchanged. See README for optional shortcut setup.')
+
+if __name__ == '__main__':
+    try: install()
+    except Exception: sys.exit('Installation refused an unsafe destination or could not copy files. No credentials were accessed.')

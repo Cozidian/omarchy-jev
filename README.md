@@ -1,6 +1,6 @@
 # JEV Launcher for Omarchy
 
-Press **Super+Alt+J** or click **JEV** in the bar. Describe what you need and press Enter. Clear matches with a reviewed safe operation run automatically. **Preview only** shows the planned operation without running it. Escape or clicking outside closes the overlay.
+Click **JEV** in the bar, or press **Super+Alt+J** if you added the optional shortcut. Describe what you need and press Enter. Clear matches with a reviewed safe operation run automatically. **Preview only** shows the planned operation without running it. Escape or clicking outside closes the overlay.
 
 **Browse actions** / **Ctrl+B** opens the live command catalogue. Type to filter command names, groups, descriptions and aliases. Up/Down selects a row; Enter or clicking inspects it. Inspection fills the command into the request field but does not run it. Add any needed operation/value and press Enter to ask JEV.
 
@@ -37,7 +37,7 @@ Code builds every argv. The model cannot supply shell commands, paths, executabl
 
 The only automatic operations are the exact reviewed routes in `NO_ARGUMENTS` and `PARAMETERS`, subject to argument validation. Destructive file operations, reset, power/locking/logout, security/network changes, packages, arbitrary code, messages and unreviewed operations have no execution path. Display-off and reminder-clear suboperations stay advisory. Mixed requests do not execute any part.
 
-All subprocess calls use argv arrays, `shell=False`, checked exit status and timeouts. App launchers do not inherit captured output pipes. Read-only results are returned in the overlay; dynamic text is rendered as plain text. Night light reads current and final state so repeated “on” stays on. A timeout or command failure may still mean a partial change: inspect the desktop before retrying.
+All subprocess calls use argv arrays, `shell=False`, checked exit status and timeouts. App launchers do not inherit captured output pipes. Read-only results are returned in the overlay; dynamic text is rendered as plain text. Night light reads current and final state so repeated “on” stays on. Requests stop after 60 seconds. Closing the launcher stops waiting but cannot undo an action that already started. A timeout or command failure may still mean a partial change: inspect the desktop before retrying.
 
 Thresholds and live examples are not a correctness guarantee. A model mistake can choose a different permitted harmless operation; the local policy bounds possible effects.
 
@@ -45,21 +45,36 @@ Thresholds and live examples are not a correctness guarantee. A model mistake ca
 
 No background HTTP server, history database or transcript logging. Catalogue browsing works locally without the API. Submitted requests and relevant command metadata are sent to `https://api.typesafe.ai/v1/systemone` using `jev-latest`. No screen, clipboard, file contents or shortcut command payloads are sent. Shortcut descriptions and key combinations are included only as catalogue metadata. If active shortcuts cannot be read outside the graphical session, command discovery still works. Remote processing follows your TypeSafe account's terms. Reminders themselves are intentionally stored by Omarchy until they fire or are cleared manually.
 
-The worker reads `TYPESAFE_API_KEY`, otherwise `~/.config/omarchy/jev/api-key`, a regular user-owned file with mode 600. The key is never embedded in QML or committed.
+The worker prefers `~/.config/omarchy/jev/api-key`, falling back to `TYPESAFE_API_KEY` only if no saved key exists. The saved key is a user-owned regular file (600) inside a private directory (700). Symlinks, hardlinks, devices, FIFOs, oversized keys and control characters are rejected. HTTP redirects are refused, including redirects to the same host. Credentials never enter QML, command arguments, exception output or repository files. Local commands do not inherit `TYPESAFE_API_KEY`.
+
+Click **Configure key** to open a hidden terminal prompt. Setup makes a small live connection test before atomically replacing the saved key, so a failed connection keeps the previous key. Setup can repair permissions on owned regular credential files. No credential backups are created. Changing the environment does not override a saved key; rerun setup to rotate it.
+
+The plugin shares your desktop user privileges with other Omarchy plugins. This is not protection against malicious code already running as your user. Read [SECURITY.md](SECURITY.md) for the review scope and limits.
 
 ## Install and develop
 
 Use `~/.agents/skills/typesafe-ai/SKILL.md` for JEV work and the Omarchy skill for desktop changes. TypeSafe API documentation: https://docs.typesafe.ai/api. Function-calling and hierarchy patterns: https://docs.typesafe.ai/cookbooks/function_calling and https://docs.typesafe.ai/cookbooks/hierarchical_classification.
 
-From this directory:
+Requires a current Omarchy installation with shell plugin support, Python 3.10+ and a TypeSafe API account. Desktop adapters use installed Omarchy commands, `wpctl` and `xdg-open`. No pip/npm packages are required.
+
+Install the public plugin:
 
 ```sh
-python3 install.py
-omarchy plugin validate ~/.config/omarchy/plugins/io.github.cozidian.jev
-omarchy-shell shell rescanPlugins
+omarchy plugin add https://github.com/Cozidian/omarchy-jev --enable
+python3 ~/.config/omarchy/plugins/io.github.cozidian.jev/setup.py
 ```
 
-For a first install, check Super+Alt+J is free with `hyprctl -j binds`, then enable the plugin with `omarchy plugin enable io.github.cozidian.jev`, run `hyprctl reload`, and check `hyprctl configerrors`. The installer copies user-owned plugin files and backs up replaced files and bindings. It preserves existing credentials and configures a new private key file only when the environment key is available and no key file exists. Packaged Omarchy files are untouched.
+Setup prompts for your key without echoing it. Never paste a key into a shell command or a chat. If your key is already provided securely through the environment, use `setup.py --from-env`. Verify later with `setup.py --check` (one small live API request). Catalogue browsing requires no key. The installer does not read or copy environment credentials.
+
+For a local checkout, run `python3 install.py`, validate with `omarchy plugin validate ~/.config/omarchy/plugins/io.github.cozidian.jev`, then enable with `omarchy plugin enable io.github.cozidian.jev`. The copy installer leaves credentials and keyboard bindings unchanged. Back up your existing plugin before replacing customized code.
+
+Add JEV to the bar using the Omarchy bar editor, or optionally add this line to `~/.config/hypr/bindings.lua` after backing up the file and checking `hyprctl -j binds` for conflicts:
+
+```lua
+o.bind("SUPER + ALT + J", "JEV Launcher", "omarchy-shell shell toggle io.github.cozidian.jev")
+```
+
+Then run `hyprctl reload` and `hyprctl configerrors`. The shortcut is optional; the stock plugin installer does not create it. Plugin changes normally reload automatically; `omarchy restart shell` reloads QML if needed.
 
 Disable with `omarchy plugin disable io.github.cozidian.jev`; remove the marked JEV binding from `~/.config/hypr/bindings.lua`, reload, and check configerrors.
 
